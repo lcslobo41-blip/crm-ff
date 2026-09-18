@@ -194,8 +194,10 @@ tr:hover td{background:var(--bg)}
 </style>
 
 <!-- Firebase SDK v9 compat -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"
+  onerror="window._fbErr='firebase-app'"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"
+  onerror="window._fbErr='firebase-firestore'"></script>
 </head>
 <body>
 
@@ -1984,6 +1986,15 @@ function _modoLocal(msg){
 }
 
 function initDB(){
+  // Verifica se scripts do Firebase carregaram
+  if(typeof firebase === 'undefined' || window._fbErr){
+    const motivo = window._fbErr
+      ? `Erro ao carregar script: ${window._fbErr}`
+      : 'Firebase SDK não carregou';
+    console.warn('[CRM]', motivo, '— usando modo local');
+    _modoLocal(motivo + ' — dados locais apenas');
+    return;
+  }
   // Verifica se config foi preenchida
   if(FIREBASE_CONFIG.apiKey.startsWith('COLE_')){
     _modoLocal('Firebase não configurado — dados locais apenas');
@@ -2088,7 +2099,12 @@ function _setupEnterNav(){
 }
 _setupEnterNav();
 
-initDB();
+// Garante que o DOM e os scripts externos estejam prontos
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initDB);
+} else {
+  initDB();
+}
 </script>
 </body>
 </html>

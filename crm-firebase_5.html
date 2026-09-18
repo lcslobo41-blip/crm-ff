@@ -196,7 +196,6 @@ tr:hover td{background:var(--bg)}
 <!-- Firebase SDK v9 compat -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -477,9 +476,9 @@ function editCliente(id){
   const body=`<div style="display:grid;gap:12px">
     <div class="fg">
       <label>CNPJ</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1">
-        <button type="button" class="btn btn-outline btn-sm" onclick="buscarCNPJ()" title="Buscar dados via Receita Federal">🔍 Buscar</button>
+      <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surf)">
+        <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1;border:none;border-radius:0;background:transparent;padding:7px 10px;outline:none">
+        <button type="button" onclick="buscarCNPJ()" title="Buscar dados via Receita Federal" style="border:none;border-left:1px solid var(--border);background:var(--bg);padding:0 14px;cursor:pointer;font-size:16px;color:var(--navy);display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;white-space:nowrap">🔍 Buscar</button>
       </div>
       <div id="cnpj-status" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
     </div>
@@ -1064,71 +1063,9 @@ function calcVTotal(){
   if(el&&men) el.value=(men*per).toFixed(2);
 }
 
-function previewLamina(input){
-  const file=input.files?.[0];
-  if(!file) return;
-  if(file.size>10*1024*1024){ alert('Arquivo muito grande. Máximo 10 MB.'); input.value=''; return; }
-  document.getElementById('lamina-preview-nome').textContent=file.name;
-  document.getElementById('lamina-preview').style.display='flex';
-  document.getElementById('lamina-upload-wrap').style.display='none';
-}
-
-function cancelarLamina(){
-  const inp=document.getElementById('p-lamina-file');
-  if(inp) inp.value='';
-  document.getElementById('lamina-preview').style.display='none';
-  document.getElementById('lamina-upload-wrap').style.display='';
-}
-
-function removerLamina(){
-  if(!confirm('Remover a lâmina técnica desta proposta?')) return;
-  document.getElementById('p-lamina-url').value='';
-  document.getElementById('p-lamina-nome').value='';
-  // Remove the existing lamina display and show upload area
-  const existing=document.querySelector('#t-equip .sub-sec:last-of-type [href]')?.closest('div[style]');
-  if(existing) existing.remove();
-  document.getElementById('lamina-upload-wrap').style.display='';
-}
-
-async function _uploadLamina(file, key){
-  try{
-    const storage=firebase.storage();
-    const ref=storage.ref('laminas/'+key+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'));
-    const prog=document.getElementById('lamina-progress');
-    const bar=document.getElementById('lamina-progress-bar');
-    const txt=document.getElementById('lamina-progress-txt');
-    if(prog){ prog.style.display=''; }
-    document.getElementById('lamina-preview').style.display='none';
-    return await new Promise((resolve)=>{
-      const task=ref.put(file);
-      task.on('state_changed',
-        snap=>{ const pct=Math.round(snap.bytesTransferred/snap.totalBytes*100);
-          if(bar) bar.style.width=pct+'%';
-          if(txt) txt.textContent='Enviando… '+pct+'%'; },
-        err=>{ console.error(err); if(prog) prog.style.display='none'; resolve(false); },
-        async ()=>{
-          const url=await task.snapshot.ref.getDownloadURL();
-          document.getElementById('p-lamina-url').value=url;
-          document.getElementById('p-lamina-nome').value=file.name;
-          if(prog) prog.style.display='none';
-          resolve(true);
-        }
-      );
-    });
-  }catch(e){ console.error(e); return false; }
-}
-
-async function saveProposta(id,preCli){
+function saveProposta(id,preCli){
   const g=i=>(document.getElementById(i)?.value||'').trim();
   if(!g('p-cli')){ alert('Selecione o cliente'); return false; }
-
-  // Upload lâmina técnica se arquivo selecionado
-  const fileInput=document.getElementById('p-lamina-file');
-  const file=fileInput?.files?.[0];
-  if(file){
-    const ok=await _uploadLamina(file, id||g('p-cli')+'_'+Date.now());
-    if(!ok){ alert('Falha no upload da lâmina. Verifique sua conexão e tente novamente.'); return false; }
-  }
 
   const props=STORE.propostas();
   const ex=id?props.find(p=>p.id===id):null;

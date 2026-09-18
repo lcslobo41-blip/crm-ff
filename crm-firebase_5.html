@@ -476,17 +476,19 @@ function editCliente(id){
   const v=k=>ex?.(k)||'';
 
   const body=`<div style="display:grid;gap:12px">
-    <div class="fg">
-      <label>CNPJ</label>
-      <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surf);max-width:340px">
-        <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1;min-width:0;border:none;border-radius:0;background:transparent;padding:7px 10px;outline:none">
-        <button type="button" onclick="buscarCNPJ()" title="Buscar dados via Receita Federal" style="border:none;border-left:1px solid var(--border);background:var(--bg);padding:0 14px;cursor:pointer;color:var(--navy);display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">🔍 Buscar</button>
-      </div>
-      <div id="cnpj-status" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
-    </div>
     <div class="fg-row c2">
-      <div class="fg"><label>Razão Social *</label><input id="c-razao" value="${v('razaoSocial')}"></div>
+      <div class="fg">
+        <label>CNPJ</label>
+        <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surf)">
+          <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1;min-width:0;border:none;border-radius:0;background:transparent;padding:7px 10px;outline:none">
+          <button type="button" onclick="buscarCNPJ()" title="Buscar dados via Receita Federal" style="border:none;border-left:1px solid var(--border);background:var(--bg);padding:0 14px;cursor:pointer;color:var(--navy);display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">🔍 Buscar</button>
+        </div>
+        <div id="cnpj-status" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+      </div>
       <div class="fg"><label>Nome Fantasia</label><input id="c-fantasia" value="${v('nomeFantasia')}"></div>
+    </div>
+    <div class="fg">
+      <label>Razão Social *</label><input id="c-razao" value="${v('razaoSocial')}">
     </div>
     <div class="fg-row c2">
       <div class="fg"><label>Insc. Estadual</label><input id="c-ie" value="${v('ie')}"></div>

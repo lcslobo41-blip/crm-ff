@@ -194,8 +194,10 @@ tr:hover td{background:var(--bg)}
 </style>
 
 <!-- Firebase SDK v9 compat -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"
+  onerror="window._fbErr='firebase-app'"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"
+  onerror="window._fbErr='firebase-firestore'"></script>
 </head>
 <body>
 
@@ -237,12 +239,12 @@ tr:hover td{background:var(--bg)}
 // FIREBASE CONFIG — Preencha com os dados do seu projeto Firebase
 // ═══════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:            "COLE_SUA_API_KEY_AQUI",
-  authDomain:        "COLE_SEU_PROJECT_ID.firebaseapp.com",
-  projectId:         "COLE_SEU_PROJECT_ID",
-  storageBucket:     "COLE_SEU_PROJECT_ID.appspot.com",
-  messagingSenderId: "COLE_SEU_SENDER_ID",
-  appId:             "COLE_SEU_APP_ID"
+  apiKey:            "AIzaSyA_3GabFk-goKDCa7A7d9zBkcjhhPk-qcw",
+  authDomain:        "crm-ff26.firebaseapp.com",
+  projectId:         "crm-ff26",
+  storageBucket:     "crm-ff26.firebasestorage.app",
+  messagingSenderId: "842236812338",
+  appId:             "1:842236812338:web:91426853abba38cf5a302b"
 };
 
 // DATA LAYER — Firebase Firestore (multi-conta, multi-computador)
@@ -474,17 +476,19 @@ function editCliente(id){
   const v=k=>ex?.(k)||'';
 
   const body=`<div style="display:grid;gap:12px">
-    <div class="fg">
-      <label>CNPJ</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1">
-        <button type="button" class="btn btn-outline btn-sm" onclick="buscarCNPJ()" title="Buscar dados via Receita Federal">🔍 Buscar</button>
-      </div>
-      <div id="cnpj-status" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
-    </div>
     <div class="fg-row c2">
-      <div class="fg"><label>Razão Social *</label><input id="c-razao" value="${v('razaoSocial')}"></div>
+      <div class="fg">
+        <label>CNPJ</label>
+        <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surf)">
+          <input id="c-cnpj" value="${v('cnpj')}" placeholder="00.000.000/0000-00" style="flex:1;min-width:0;border:none;border-radius:0;background:transparent;padding:7px 10px;outline:none">
+          <button type="button" onclick="buscarCNPJ()" title="Buscar CNPJ" style="border:none;border-left:1px solid var(--border);background:var(--bg);padding:0 10px;cursor:pointer;color:var(--navy);font-size:16px;flex-shrink:0;display:flex;align-items:center">🔍</button>
+        </div>
+        <div id="cnpj-status" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+      </div>
       <div class="fg"><label>Nome Fantasia</label><input id="c-fantasia" value="${v('nomeFantasia')}"></div>
+    </div>
+    <div class="fg">
+      <label>Razão Social *</label><input id="c-razao" value="${v('razaoSocial')}">
     </div>
     <div class="fg-row c2">
       <div class="fg"><label>Insc. Estadual</label><input id="c-ie" value="${v('ie')}"></div>
@@ -676,6 +680,7 @@ function renderPropostas(){
         <button class="btn btn-outline btn-xs" onclick="viewProposta('${p.id}')">👁️</button>
         <button class="btn btn-outline btn-xs" onclick="editProposta('${p.id}')">✏️</button>
         <button class="btn btn-outline btn-xs" onclick="dupProposta('${p.id}')">📋</button>
+        ${p.laminaUrl?`<a href="${p.laminaUrl}" target="_blank" class="btn btn-outline btn-xs" title="Ver Lâmina Técnica">📎</a>`:''}
         <button class="btn btn-ghost btn-xs" onclick="delProposta('${p.id}')">🗑️</button>
       </div></td>
     </tr>`;
@@ -733,6 +738,7 @@ function filterProps(){
         <button class="btn btn-outline btn-xs" onclick="viewProposta('${p.id}')">👁️</button>
         <button class="btn btn-outline btn-xs" onclick="editProposta('${p.id}')">✏️</button>
         <button class="btn btn-outline btn-xs" onclick="dupProposta('${p.id}')">📋</button>
+        ${p.laminaUrl?`<a href="${p.laminaUrl}" target="_blank" class="btn btn-outline btn-xs" title="Ver Lâmina Técnica">📎</a>`:''}
         <button class="btn btn-ghost btn-xs" onclick="delProposta('${p.id}')">🗑️</button>
       </div></td>
     </tr>`;
@@ -976,6 +982,25 @@ function editProposta(id, preCli){
       <div class="fg"><label>Acessórios / Itens adicionais</label>
         <textarea id="p-acess" placeholder="Um item por linha, ex:&#10;01 (um) Conjunto de acessórios para troca de bateria">${v('acessorios')}</textarea>
       </div>
+
+      <!-- LÂMINA TÉCNICA -->
+      <div class="sub-sec">
+        <div class="sub-sec-title">📎 Lâmina Técnica</div>
+        <div style="display:grid;gap:8px">
+          <div class="fg">
+            <label>Link da Lâmina (Google Drive ou qualquer URL)</label>
+            <input id="p-lamina-url" value="${v('laminaUrl')||''}" placeholder="Cole aqui o link de compartilhamento do PDF">
+          </div>
+          <div class="fg">
+            <label>Nome do arquivo (opcional)</label>
+            <input id="p-lamina-nome" value="${v('laminaNome')||''}" placeholder="ex: Lamina_Retratil_Still_R70-16.pdf">
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:8px;background:var(--bg);border-radius:6px;line-height:1.6">
+            💡 <b>Como obter o link:</b> Abra o Google Drive → clique com botão direito no PDF → <b>Compartilhar</b> → <b>Qualquer pessoa com o link</b> → <b>Copiar link</b> → cole acima.
+          </div>
+          ${v('laminaUrl')?`<a href="${v('laminaUrl')}" target="_blank" class="btn btn-outline btn-xs" style="width:fit-content">👁️ Ver lâmina atual</a>`:''}
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1097,6 +1122,8 @@ function saveProposta(id,preCli){
     alongadorSN:g('p-along-sn'),
     alongadorMm:parseInt(g('p-along-mm'))||0,
     acessorios:g('p-acess'),
+    laminaUrl:g('p-lamina-url')||(ex?.laminaUrl||''),
+    laminaNome:g('p-lamina-nome')||(ex?.laminaNome||''),
     periodo:g('p-per'),
     periodoUn:g('p-per-un'),
     valorMensal:parseFloat(g('p-vmen'))||0,
@@ -1356,6 +1383,7 @@ function viewProposta(id){
           ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
         </select>
         <button class="btn btn-outline btn-sm" onclick="editProposta('${id}');closeModal()">✏️ Editar</button>
+        ${p.laminaUrl?`<a href="${p.laminaUrl}" target="_blank" class="btn btn-outline btn-sm" style="background:#7C3AED;color:#fff;border-color:#7C3AED">📎 Lâmina</a>`:''}
         <button class="btn btn-outline btn-sm" style="background:#25D366;color:#fff;border-color:#25D366" onclick="enviarWhatsApp('${id}')">📲 WhatsApp</button>
         <button class="btn btn-outline btn-sm" style="background:#2563EB;color:#fff;border-color:#2563EB" onclick="enviarEmail('${id}')">✉️ E-mail</button>
         <button class="btn btn-outline btn-sm" style="background:#DC2626;color:#fff;border-color:#DC2626" onclick="gerarPDF('${id}')">📥 Baixar PDF</button>
@@ -1707,11 +1735,27 @@ function toggleLocEnd(cb){
 
 function toggleEquipFields(tipo){
   const isEletrica=tipo.includes('Elétrica')||tipo.includes('Eletrica');
-  const isCombustao=tipo.includes('Combustão')||tipo.includes('Combustao');
+  const isCombustao=tipo.includes('Combustão')||tipo.includes('Combustao')||tipo.includes('Combustao');
   const secE=document.getElementById('sec-eletrica');
   const secC=document.getElementById('sec-combustao');
-  if(secE) secE.style.display=isEletrica?'':'none';
-  if(secC) secC.style.display=isCombustao?'':'none';
+
+  // Mostra/oculta seções
+  if(secE){ secE.style.display=isEletrica?'':'none'; }
+  if(secC){ secC.style.display=isCombustao?'':'none'; }
+
+  // Habilita/desabilita campos internos para evitar dados inválidos
+  const idsEletrica=['p-bat-qtd','p-bat-v','p-bat-ah','p-bat-tipo',
+    'p-car-qtd','p-car-v','p-car-a','p-car-fase','p-carrinho-pos','p-carrinho-qtd'];
+  const idsCombustao=['p-botijao'];
+
+  idsEletrica.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.disabled=!isEletrica; if(!isEletrica) el.value=''; }
+  });
+  idsCombustao.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.disabled=!isCombustao; if(!isCombustao) el.value=''; }
+  });
 }
 
 async function buscarCNPJ(){
@@ -1944,6 +1988,15 @@ function _modoLocal(msg){
 }
 
 function initDB(){
+  // Verifica se scripts do Firebase carregaram
+  if(typeof firebase === 'undefined' || window._fbErr){
+    const motivo = window._fbErr
+      ? `Erro ao carregar script: ${window._fbErr}`
+      : 'Firebase SDK não carregou';
+    console.warn('[CRM]', motivo, '— usando modo local');
+    _modoLocal(motivo + ' — dados locais apenas');
+    return;
+  }
   // Verifica se config foi preenchida
   if(FIREBASE_CONFIG.apiKey.startsWith('COLE_')){
     _modoLocal('Firebase não configurado — dados locais apenas');
@@ -2020,7 +2073,40 @@ function initDB(){
   },err=>{console.error('cfg',err);if(!icfg){icfg=true;onReady();}});
 }
 
-initDB();
+// ═══════════════════════════════════════════════
+// ENTER — pula para o próximo campo
+// ═══════════════════════════════════════════════
+function _setupEnterNav(){
+  document.addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    const tag=e.target.tagName;
+    // só inputs e selects dentro de modal ou formulário
+    if(tag==='TEXTAREA') return;
+    if(tag!=='INPUT' && tag!=='SELECT') return;
+    e.preventDefault();
+    // coleta todos os campos focáveis no container atual
+    const container=e.target.closest('.overlay,.modal,#content')||document;
+    const fields=Array.from(container.querySelectorAll(
+      'input:not([disabled]):not([hidden]):not([type="file"]):not([type="checkbox"]),select:not([disabled]),textarea:not([disabled])'
+    )).filter(el=>{
+      const s=window.getComputedStyle(el);
+      return s.display!=='none'&&s.visibility!=='hidden'&&el.offsetParent!==null;
+    });
+    const idx=fields.indexOf(e.target);
+    if(idx>=0 && idx<fields.length-1){
+      fields[idx+1].focus();
+      if(fields[idx+1].tagName==='INPUT') fields[idx+1].select();
+    }
+  });
+}
+_setupEnterNav();
+
+// Garante que o DOM e os scripts externos estejam prontos
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initDB);
+} else {
+  initDB();
+}
 </script>
 </body>
 </html>

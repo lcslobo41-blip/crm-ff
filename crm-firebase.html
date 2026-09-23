@@ -268,32 +268,76 @@ const LS = {
   s(k,v){ try{localStorage.setItem('crm_'+k,JSON.stringify(v))}catch{} }
 };
 
-function _dbSetColl(collName, newArr, oldArr){
-  if(!STATE._db){ LS.s(collName, newArr); return; }
+// ── SYNC STATUS (sincronização garantida) ──
+const SYNC={pend:0,err:null,online:navigator.onLine};
+function _syncUI(){
+  let b=document.getElementById('sync-badge');
+  if(!b){b=document.createElement('div');b.id='sync-badge';document.body.appendChild(b);}
+  let txt,bg;
+  if(SYNC.err){txt='❌ NÃO SINCRONIZOU — '+SYNC.err+' (clique p/ recarregar)';bg='#DC2626';}
+  else if(!SYNC.online){txt='📴 Offline — salvo no aparelho, envia ao reconectar'+(SYNC.pend?` (${SYNC.pend} pendente)`:'');bg='#D97706';}
+  else if(SYNC.pend){txt=`⏳ Sincronizando… (${SYNC.pend})`;bg='#2563EB';}
+  else {txt='✅ Sincronizado';bg='#16A34A';}
+  b.textContent=txt;
+  b.style.cssText=`position:fixed;right:14px;bottom:14px;z-index:99999;background:${bg};color:#fff;`+
+    `font:600 12px Inter,sans-serif;padding:8px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);`+
+    `cursor:${SYNC.err?'pointer':'default'};max-width:90vw`;
+  b.onclick=SYNC.err?()=>location.reload():null;
+  const foot=document.getElementById('side-foot');
+  if(foot&&STATE._db) foot.innerHTML='v1.0 · 2026 · '+(SYNC.err?'<span style="color:#f87171">❌ ERRO SYNC</span>':'<span style="color:#4ade80">🔗 Firebase</span>');
+}
+function _syncErr(e,onde){
+  const code=e&&e.code||'';
+  SYNC.err = code==='permission-denied'
+    ? 'Firebase recusou (Regras do Firestore expiradas/bloqueadas)'
+    : (onde+': '+(code||e&&e.message||e));
+  console.error('[CRM SYNC]',onde,e);
+  const jaAvisou=SYNC._avisou; SYNC._avisou=true;
+  _syncUI();
+  if(!jaAvisou) alert('⚠️ ATENÇÃO: o dado NÃO foi salvo na nuvem.\n\n'+SYNC.err+'\n\nNão feche a página. Faça Backup e avise o suporte.');
+}
+function _track(p,onde){
+  SYNC.pend++; _syncUI();
+  return p.then(()=>{SYNC.pend--;_syncUI();})
+          .catch(e=>{SYNC.pend--;_syncErr(e,onde);});
+}
+window.addEventListener('online', ()=>{SYNC.online=true;_syncUI();});
+window.addEventListener('offline',()=>{SYNC.online=false;_syncUI();});
+window.addEventListener('beforeunload',e=>{
+  if(SYNC.pend>0 && SYNC.online){e.preventDefault();e.returnValue='Ainda há dados sendo enviados.';}
+});
+
+// Último estado confirmado pelo servidor (alimentado pelo onSnapshot).
+// As telas alteram STATE.* em memória antes de chamar STORE.set*, por isso
+// a comparação TEM que ser contra _SRV, nunca contra o array antigo.
+const _SRV={clientes:[],visitas:[],propostas:[]};
+function _clean(o){ return JSON.parse(JSON.stringify(o)); } // remove undefined
+function _dbSetColl(collName, newArr){
+  if(!STATE._db){ _syncErr({message:'sem conexão com o banco'},collName); return; }
   const coll=STATE._db.collection(collName);
-  const oldMap=new Map((oldArr||[]).map(x=>[x.id,x]));
-  const newMap=new Map(newArr.map(x=>[x.id,x]));
-  const batch=STATE._db.batch();
-  for(const [id] of oldMap) if(!newMap.has(id)) batch.delete(coll.doc(id));
+  const oldMap=new Map((_SRV[collName]||[]).map(x=>[x.id,x]));
+  const newMap=new Map((newArr||[]).filter(x=>x&&x.id).map(x=>[x.id,_clean(x)]));
+  const batch=STATE._db.batch(); let n=0;
+  for(const [id] of oldMap) if(!newMap.has(id)){ batch.delete(coll.doc(id)); n++; }
   for(const [id,item] of newMap){
     const old=oldMap.get(id);
-    if(!old||JSON.stringify(old)!==JSON.stringify(item)) batch.set(coll.doc(id),item);
+    if(!old||JSON.stringify(old)!==JSON.stringify(item)){ batch.set(coll.doc(id),item); n++; }
   }
-  batch.commit().catch(e=>console.warn('DB write error:',e));
+  if(n) _track(batch.commit(),'gravar '+collName);
 }
 
 const STORE = {
   clientes(){ return STATE.clientes },
-  setClientes(v){ const o=STATE.clientes; STATE.clientes=v; _dbSetColl('clientes',v,o); },
+  setClientes(v){ STATE.clientes=v; _dbSetColl('clientes',v); },
   visitas(){ return STATE.visitas },
-  setVisitas(v){ const o=STATE.visitas; STATE.visitas=v; _dbSetColl('visitas',v,o); },
+  setVisitas(v){ STATE.visitas=v; _dbSetColl('visitas',v); },
   propostas(){ return STATE.propostas },
-  setPropostas(v){ const o=STATE.propostas; STATE.propostas=v; _dbSetColl('propostas',v,o); },
+  setPropostas(v){ STATE.propostas=v; _dbSetColl('propostas',v); },
   cfg(){ return STATE.cfg||DEFAULT_CFG },
   setCfg(v){
     STATE.cfg=v;
-    if(STATE._db) STATE._db.collection('cfg').doc('main').set(v).catch(()=>{});
-    else LS.s('cfg',v);
+    if(STATE._db) _track(STATE._db.collection('cfg').doc('main').set(_clean(v)),'gravar configurações');
+    else _syncErr({message:'sem conexão com o banco'},'configurações');
   },
   nextNr(cat){
     const c={...(STATE.cfg||DEFAULT_CFG)};
@@ -1976,6 +2020,19 @@ function _navLock(on){
 }
 
 function _modoLocal(msg){
+  _navLock(true);
+  const foot=document.getElementById('side-foot');
+  if(foot) foot.innerHTML='v1.0 · 2026 · <span style="color:#f87171">❌ SEM BANCO</span>';
+  document.getElementById('content').innerHTML=
+    '<div style="max-width:560px;margin:60px auto;text-align:center;font-family:Inter,sans-serif">'+
+    '<div style="font-size:42px">⚠️</div>'+
+    '<h2 style="color:#DC2626;margin:10px 0">Sem conexão com o banco de dados</h2>'+
+    '<p style="color:var(--muted);font-size:14px;line-height:1.6">'+msg+'<br><br>'+
+    'Para não gerar dados que não sincronizam, o CRM fica bloqueado até conectar.<br>'+
+    'Verifique internet, antivírus/bloqueador de anúncios (liberar <b>gstatic.com</b> e <b>googleapis.com</b>).</p>'+
+    '<button onclick="location.reload()" style="margin-top:16px;padding:10px 22px;border:0;border-radius:8px;background:#1B3A6B;color:#fff;font-weight:600;cursor:pointer">Tentar novamente</button></div>';
+}
+function _modoLocal_OLD(msg){
   STATE.clientes=LS.g('clientes')||[];
   STATE.visitas=LS.g('visitas')||[];
   STATE.propostas=LS.g('propostas')||[];
@@ -2017,6 +2074,8 @@ function initDB(){
     app=firebase.app();
   }
   const db=app.firestore();
+  // Cache local persistente: grava mesmo offline e envia ao reconectar (sobrevive a recarregar a página)
+  db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('[CRM] persistência offline indisponível:',e.code));
   STATE._db=db;
 
   const foot=document.getElementById('side-foot');
@@ -2040,37 +2099,41 @@ function initDB(){
         }
       }
       _navLock(false);
+      _syncUI();
       go('dashboard');
     }
   };
   let ic=false,iv=false,ip=false,icfg=false;
 
   db.collection('clientes').onSnapshot(snap=>{
+    _SRV.clientes=snap.docs.map(d=>d.data());
     STATE.clientes=snap.docs.map(d=>d.data());
     if(!ic){ic=true;onReady();}
     else if(PAGE==='clientes') renderClientes();
     else if(PAGE==='dashboard') renderDash();
-  },err=>{console.error('clientes',err);if(!ic){ic=true;onReady();}});
+  },err=>{_syncErr(err,'ler clientes');if(!ic){ic=true;onReady();}});
 
   db.collection('visitas').onSnapshot(snap=>{
+    _SRV.visitas=snap.docs.map(d=>d.data());
     STATE.visitas=snap.docs.map(d=>d.data());
     if(!iv){iv=true;onReady();}
     else if(PAGE==='visitas') renderVisitas();
     else if(PAGE==='dashboard') renderDash();
-  },err=>{console.error('visitas',err);if(!iv){iv=true;onReady();}});
+  },err=>{_syncErr(err,'ler visitas');if(!iv){iv=true;onReady();}});
 
   db.collection('propostas').onSnapshot(snap=>{
+    _SRV.propostas=snap.docs.map(d=>d.data());
     STATE.propostas=snap.docs.map(d=>d.data());
     if(!ip){ip=true;onReady();}
     else if(PAGE==='propostas') renderPropostas();
     else if(PAGE==='dashboard') renderDash();
-  },err=>{console.error('propostas',err);if(!ip){ip=true;onReady();}});
+  },err=>{_syncErr(err,'ler propostas');if(!ip){ip=true;onReady();}});
 
   db.collection('cfg').doc('main').onSnapshot(snap=>{
     STATE.cfg=snap.exists?snap.data():null;
     _applySidebarLogo(STATE.cfg);
     if(!icfg){icfg=true;onReady();}
-  },err=>{console.error('cfg',err);if(!icfg){icfg=true;onReady();}});
+  },err=>{_syncErr(err,'ler cfg');if(!icfg){icfg=true;onReady();}});
 }
 
 // ═══════════════════════════════════════════════

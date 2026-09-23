@@ -517,7 +517,7 @@ function filterCli(){
 
 function editCliente(id){
   const ex=id?STORE.clientes().find(c=>c.id===id):null;
-  const v=k=>ex?.(k)||'';
+  const v=k=>ex?.[k]||'';
 
   const body=`<div style="display:grid;gap:12px">
     <div class="fg-row c2">
@@ -639,7 +639,7 @@ function editVisita(id){
   const ex=id?STORE.visitas().find(v=>v.id===id):null;
   const clis=STORE.clientes();
   const cliOpts=clis.map(c=>`<option value="${c.id}" ${ex?.clienteId===c.id?'selected':''}>${c.razaoSocial}</option>`).join('');
-  const v=k=>ex?.(k)||'';
+  const v=k=>ex?.[k]||'';
   const sel=(field,val)=>ex?.[field]===val?'selected':'';
 
   const body=`<div style="display:grid;gap:12px">

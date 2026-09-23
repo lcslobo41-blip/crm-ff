@@ -307,31 +307,36 @@ window.addEventListener('beforeunload',e=>{
   if(SYNC.pend>0 && SYNC.online){e.preventDefault();e.returnValue='Ainda há dados sendo enviados.';}
 });
 
-function _dbSetColl(collName, newArr, oldArr){
+// Último estado confirmado pelo servidor (alimentado pelo onSnapshot).
+// As telas alteram STATE.* em memória antes de chamar STORE.set*, por isso
+// a comparação TEM que ser contra _SRV, nunca contra o array antigo.
+const _SRV={clientes:[],visitas:[],propostas:[]};
+function _clean(o){ return JSON.parse(JSON.stringify(o)); } // remove undefined
+function _dbSetColl(collName, newArr){
   if(!STATE._db){ _syncErr({message:'sem conexão com o banco'},collName); return; }
   const coll=STATE._db.collection(collName);
-  const oldMap=new Map((oldArr||[]).map(x=>[x.id,x]));
-  const newMap=new Map(newArr.map(x=>[x.id,x]));
-  const batch=STATE._db.batch();
-  for(const [id] of oldMap) if(!newMap.has(id)) batch.delete(coll.doc(id));
+  const oldMap=new Map((_SRV[collName]||[]).map(x=>[x.id,x]));
+  const newMap=new Map((newArr||[]).filter(x=>x&&x.id).map(x=>[x.id,_clean(x)]));
+  const batch=STATE._db.batch(); let n=0;
+  for(const [id] of oldMap) if(!newMap.has(id)){ batch.delete(coll.doc(id)); n++; }
   for(const [id,item] of newMap){
     const old=oldMap.get(id);
-    if(!old||JSON.stringify(old)!==JSON.stringify(item)) batch.set(coll.doc(id),item);
+    if(!old||JSON.stringify(old)!==JSON.stringify(item)){ batch.set(coll.doc(id),item); n++; }
   }
-  _track(batch.commit(),'gravar '+collName);
+  if(n) _track(batch.commit(),'gravar '+collName);
 }
 
 const STORE = {
   clientes(){ return STATE.clientes },
-  setClientes(v){ const o=STATE.clientes; STATE.clientes=v; _dbSetColl('clientes',v,o); },
+  setClientes(v){ STATE.clientes=v; _dbSetColl('clientes',v); },
   visitas(){ return STATE.visitas },
-  setVisitas(v){ const o=STATE.visitas; STATE.visitas=v; _dbSetColl('visitas',v,o); },
+  setVisitas(v){ STATE.visitas=v; _dbSetColl('visitas',v); },
   propostas(){ return STATE.propostas },
-  setPropostas(v){ const o=STATE.propostas; STATE.propostas=v; _dbSetColl('propostas',v,o); },
+  setPropostas(v){ STATE.propostas=v; _dbSetColl('propostas',v); },
   cfg(){ return STATE.cfg||DEFAULT_CFG },
   setCfg(v){
     STATE.cfg=v;
-    if(STATE._db) _track(STATE._db.collection('cfg').doc('main').set(v),'gravar configurações');
+    if(STATE._db) _track(STATE._db.collection('cfg').doc('main').set(_clean(v)),'gravar configurações');
     else _syncErr({message:'sem conexão com o banco'},'configurações');
   },
   nextNr(cat){
@@ -2101,6 +2106,7 @@ function initDB(){
   let ic=false,iv=false,ip=false,icfg=false;
 
   db.collection('clientes').onSnapshot(snap=>{
+    _SRV.clientes=snap.docs.map(d=>d.data());
     STATE.clientes=snap.docs.map(d=>d.data());
     if(!ic){ic=true;onReady();}
     else if(PAGE==='clientes') renderClientes();
@@ -2108,6 +2114,7 @@ function initDB(){
   },err=>{_syncErr(err,'ler clientes');if(!ic){ic=true;onReady();}});
 
   db.collection('visitas').onSnapshot(snap=>{
+    _SRV.visitas=snap.docs.map(d=>d.data());
     STATE.visitas=snap.docs.map(d=>d.data());
     if(!iv){iv=true;onReady();}
     else if(PAGE==='visitas') renderVisitas();
@@ -2115,6 +2122,7 @@ function initDB(){
   },err=>{_syncErr(err,'ler visitas');if(!iv){iv=true;onReady();}});
 
   db.collection('propostas').onSnapshot(snap=>{
+    _SRV.propostas=snap.docs.map(d=>d.data());
     STATE.propostas=snap.docs.map(d=>d.data());
     if(!ip){ip=true;onReady();}
     else if(PAGE==='propostas') renderPropostas();

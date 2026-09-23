@@ -1426,7 +1426,7 @@ function viewProposta(id){
           <option value="">Alterar status...</option>
           ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
         </select>
-        <button class="btn btn-outline btn-sm" onclick="editProposta('${id}');closeModal()">✏️ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal();editProposta('${id}')">✏️ Editar</button>
         ${p.laminaUrl?`<a href="${p.laminaUrl}" target="_blank" class="btn btn-outline btn-sm" style="background:#7C3AED;color:#fff;border-color:#7C3AED">📎 Lâmina</a>`:''}
         <button class="btn btn-outline btn-sm" style="background:#25D366;color:#fff;border-color:#25D366" onclick="enviarWhatsApp('${id}')">📲 WhatsApp</button>
         <button class="btn btn-outline btn-sm" style="background:#2563EB;color:#fff;border-color:#2563EB" onclick="enviarEmail('${id}')">✉️ E-mail</button>

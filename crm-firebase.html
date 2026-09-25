@@ -171,9 +171,19 @@ tr:hover td{background:var(--bg)}
 .print-page{display:none}
 
 /* ── RESPONSIVE ── */
+#menu-btn{display:none;background:none;border:1px solid var(--border);color:var(--navy);border-radius:6px;font-size:20px;line-height:1;padding:5px 10px;cursor:pointer;flex-shrink:0}
+#side-ovl{display:none}
+@media (max-width:768px){
+  #main{margin-left:0}
+  #sidebar{width:250px;transform:translateX(-100%);transition:transform .22s ease;box-shadow:none}
+  body.menu-open #sidebar{transform:none;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+  body.menu-open #side-ovl{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:150}
+  #menu-btn{display:inline-block}
+  #topbar{padding:10px 12px;flex-wrap:wrap}
+  #topbar h1{font-size:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-a,.nav-sair{padding:14px 18px}
+}
 @media (max-width:600px){
-  :root{--side-w:0px}
-  #sidebar{transform:translateX(-100%)}
   #content{padding:14px}
   .kpi-grid{grid-template-columns:1fr 1fr}
   .c2,.c3,.c4{grid-template-columns:1fr}
@@ -216,12 +226,15 @@ tr:hover td{background:var(--bg)}
     <div class="nav-a" data-page="config"><span class="ico">⚙️</span><span class="nav-label">Configurações</span></div>
     <div class="nav-sair" onclick="confirmarSair()"><span class="ico">🚪</span><span class="nav-label" style="font-family:'Barlow Condensed',sans-serif;font-size:14.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase">Sair</span></div>
   </nav>
-  <div class="side-foot" id="side-foot">v1.0 · 2026</div>
+  <div class="side-foot" id="side-foot">v1.1 · 2026</div>
 </aside>
+
+<div id="side-ovl" onclick="toggleMenu(false)"></div>
 
 <!-- MAIN -->
 <main id="main">
   <div id="topbar">
+    <button id="menu-btn" type="button" aria-label="Abrir menu" onclick="toggleMenu()">☰</button>
     <h1 id="page-title">Dashboard</h1>
     <div style="display:flex;gap:8px">
       <button class="btn btn-outline btn-sm" onclick="doBackup()">💾 Backup</button>
@@ -284,7 +297,7 @@ function _syncUI(){
     `cursor:${SYNC.err?'pointer':'default'};max-width:90vw`;
   b.onclick=SYNC.err?()=>location.reload():null;
   const foot=document.getElementById('side-foot');
-  if(foot&&STATE._db) foot.innerHTML='v1.0 · 2026 · '+(SYNC.err?'<span style="color:#f87171">❌ ERRO SYNC</span>':'<span style="color:#4ade80">🔗 Firebase</span>');
+  if(foot&&STATE._db) foot.innerHTML='v1.1 · 2026 · '+(SYNC.err?'<span style="color:#f87171">❌ ERRO SYNC</span>':'<span style="color:#4ade80">🔗 Firebase</span>');
 }
 function _syncErr(e,onde){
   const code=e&&e.code||'';
@@ -395,7 +408,12 @@ function go(page){
 document.getElementById('nav').addEventListener('click',e=>{
   const a=e.target.closest('.nav-a');
   if(a&&a.dataset.page) go(a.dataset.page);
+  toggleMenu(false);
 });
+function toggleMenu(open){
+  const b=document.body;
+  b.classList.toggle('menu-open',open===undefined?!b.classList.contains('menu-open'):!!open);
+}
 
 // ═══════════════════════════════════════════════
 // DASHBOARD
@@ -517,7 +535,7 @@ function filterCli(){
 
 function editCliente(id){
   const ex=id?STORE.clientes().find(c=>c.id===id):null;
-  const v=k=>ex?.(k)||'';
+  const v=k=>ex?.[k]||'';
 
   const body=`<div style="display:grid;gap:12px">
     <div class="fg-row c2">
@@ -639,7 +657,7 @@ function editVisita(id){
   const ex=id?STORE.visitas().find(v=>v.id===id):null;
   const clis=STORE.clientes();
   const cliOpts=clis.map(c=>`<option value="${c.id}" ${ex?.clienteId===c.id?'selected':''}>${c.razaoSocial}</option>`).join('');
-  const v=k=>ex?.(k)||'';
+  const v=k=>ex?.[k]||'';
   const sel=(field,val)=>ex?.[field]===val?'selected':'';
 
   const body=`<div style="display:grid;gap:12px">
@@ -1426,7 +1444,7 @@ function viewProposta(id){
           <option value="">Alterar status...</option>
           ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
         </select>
-        <button class="btn btn-outline btn-sm" onclick="editProposta('${id}');closeModal()">✏️ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal();editProposta('${id}')">✏️ Editar</button>
         ${p.laminaUrl?`<a href="${p.laminaUrl}" target="_blank" class="btn btn-outline btn-sm" style="background:#7C3AED;color:#fff;border-color:#7C3AED">📎 Lâmina</a>`:''}
         <button class="btn btn-outline btn-sm" style="background:#25D366;color:#fff;border-color:#25D366" onclick="enviarWhatsApp('${id}')">📲 WhatsApp</button>
         <button class="btn btn-outline btn-sm" style="background:#2563EB;color:#fff;border-color:#2563EB" onclick="enviarEmail('${id}')">✉️ E-mail</button>
@@ -2022,7 +2040,7 @@ function _navLock(on){
 function _modoLocal(msg){
   _navLock(true);
   const foot=document.getElementById('side-foot');
-  if(foot) foot.innerHTML='v1.0 · 2026 · <span style="color:#f87171">❌ SEM BANCO</span>';
+  if(foot) foot.innerHTML='v1.1 · 2026 · <span style="color:#f87171">❌ SEM BANCO</span>';
   document.getElementById('content').innerHTML=
     '<div style="max-width:560px;margin:60px auto;text-align:center;font-family:Inter,sans-serif">'+
     '<div style="font-size:42px">⚠️</div>'+
@@ -2039,7 +2057,7 @@ function _modoLocal_OLD(msg){
   STATE.cfg=LS.g('cfg');
   _applySidebarLogo(STATE.cfg);
   const foot=document.getElementById('side-foot');
-  if(foot) foot.innerHTML=`v1.0 · 2026 · <span style="color:#F59E0B" title="${msg}">⚠️ local</span>`;
+  if(foot) foot.innerHTML=`v1.1 · 2026 · <span style="color:#F59E0B" title="${msg}">⚠️ local</span>`;
   _navLock(false);
   go('dashboard');
 }
@@ -2079,7 +2097,7 @@ function initDB(){
   STATE._db=db;
 
   const foot=document.getElementById('side-foot');
-  if(foot) foot.innerHTML='v1.0 · 2026 · <span style="color:#4ade80">🔗 Firebase</span>';
+  if(foot) foot.innerHTML='v1.1 · 2026 · <span style="color:#4ade80">🔗 Firebase</span>';
 
   let n=0;
   const onReady=()=>{
